@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, orientation=landscape">
+    <title>SNOOKER 营业追踪器</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(to bottom, #e3f2fd, #ffffff);
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .navbar {
+            width: 100%;
+            background-color: #2196F3;
+            padding: 10px 0;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        .navbar button {
+            margin: 0 10px;
+            padding: 10px 20px;
+            font-size: 1em;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: white;
+            color: #2196F3;
+            font-weight: bold;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        .navbar button:hover {
+            background-color: #1769aa;
+            color: white;
+        }
+        .title {
+            text-align: center;
+            font-size: 2em;
+            color: #0d47a1;
+            margin: 20px 0 10px;
+        }
+        .container {
+            max-width: 1200px;
+            width: 90%;
+            margin: 20px auto;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            display: none;
+        }
+        .active {
+            display: block;
+        }
+        h2 {
+            text-align: center;
+            color: #0d47a1;
+        }
+        .summary {
+            margin-top: 20px;
+            padding: 10px;
+            background: #f1f8e9;
+            border-radius: 8px;
+        }
+        .timer-box {
+            margin: 15px;
+            padding: 20px;
+            background: #e3f2fd;
+            border-radius: 8px;
+            border: 1px solid #90caf9;
+            width: 400px;
+            display: inline-block;
+            vertical-align: top;
+            text-align: center;
+        }
+        button {
+            padding: 10px 15px;
+            margin: 5px;
+            font-size: 1em;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+        .start-button {
+            background-color: #4caf50;
+            color: white;
+        }
+        .start-button:hover {
+            background-color: #388e3c;
+        }
+        .stop-button {
+            background-color: #4caf50;
+            color: white;
+        }
+        .stop-button:hover {
+            background-color: #388e3c;
+        }
+        .reset-button {
+            background-color: #f44336;
+            color: white;
+            display: block;
+            margin: 10px auto 0;
+        }
+        .reset-button:hover {
+            background-color: #d32f2f;
+        }
+		.locked {
+		background-color: #9e9e9e;
+		cursor: not-allowed;
+		}
+    </style>
+</head>
+<body>
+    <div class="navbar">
+    <button onclick="startBusiness()">开始营业</button>
+    <button onclick="showPage('home')">主页</button>
+    <button onclick="showPage('timers')">计时器</button>
+    <button onclick="showPage('summary')">日结</button>
+    <button onclick="showPage('history')">历史记录</button>
+	<button onclick="endBusiness()">结束营业</button>
+	</div>
+
+    <div class="title">SNOOKER 营业追踪器</div>
+	
+	<div class="real-time" id="realTime">加载时间中...</div>
+
+    <div class="container active" id="home">
+        <h2>欢迎使用 SNOOKER 营业追踪器</h2>
+    </div>
+
+    <div class="container" id="timers">
+        <h2>计时器</h2>
+        <div id="timersContainer">
+            <!-- 动态计时器会被插入这里 -->
+        </div>
+        <button onclick="addTimer()">添加计时器</button>
+    </div>
+
+    <div class="container" id="summary">
+        <h2>每日总结</h2>
+        <div class="summary">
+            <p>今日收入：<span id="dailyEarnings">RM 0.00</span></p>
+            <p>完成订单：<span id="orderCount">0</span></p>
+        </div>
+    </div>
+	
+	<div class="container" id="history">
+		<h2>历史记录</h2>
+		<div id="historyContainer">
+			<!-- 历史记录动态插入 -->
+			<p>暂无历史记录</p>
+		</div>
+	</div>
+
+    <script>
+		let isBusinessOpen = false; // 默认营业状态为关闭
+
+	function startBusiness() {
+		if (isBusinessOpen) {
+			alert("营业已经开始！");
+			return;
+		}
+		isBusinessOpen = true;
+		totalEarnings = 0;
+		orderCount = 0;
+		saveData(); // 清空上次的记录
+		alert("营业已开始！");
+		updateSummary();
+	}
+
+	function endBusiness() {
+		if (!isBusinessOpen) {
+			alert("营业尚未开始！");
+			return;
+		}
+		isBusinessOpen = false;
+		alert(`营业结束！\n总收入：RM ${totalEarnings.toFixed(2)}\n总订单数：${orderCount}`);
+		resetBusinessData(); // 清空当前计时器和状态
+	}
+
+	function resetBusinessData() {
+		const timersContainer = document.getElementById('timersContainer');
+		timersContainer.innerHTML = ""; // 清空所有计时器
+		timerCount = 0; // 重置计时器数量
+		totalEarnings = 0;
+		orderCount = 0;
+		saveData(); // 更新存储
+		updateSummary(); // 更新页面
+	}
+
+        let timerCount = 0;
+        let totalEarnings = 0;
+        let orderCount = 0;
+
+        function showPage(pageId) {
+            const pages = document.querySelectorAll('.container');
+            pages.forEach(page => page.classList.remove('active'));
+            document.getElementById(pageId).classList.add('active');
+        }
+		
+		function updateRealTime() {
+    const now = new Date();
+    // Convert to Malaysia Time (GMT+8)
+    const malaysiaTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kuala_Lumpur" }));
+    const date = malaysiaTime.toLocaleDateString("zh-CN", { year: 'numeric', month: 'long', day: 'numeric' });
+    const time = malaysiaTime.toLocaleTimeString("zh-CN", {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true // 显示12小时制
+    });
+    document.getElementById('realTime').textContent = `${date} ${time}`;
+}
+
+function updateTimer(id) {
+    const elapsed = Math.floor((Date.now() - timers[id].startTime) / 1000);
+    const hours = Math.floor(elapsed / 3600) % 12 || 12; // 将小时转换为12小时制
+    const minutes = String(Math.floor((elapsed % 3600) / 60)).padStart(2, '0');
+    const seconds = String(elapsed % 60).padStart(2, '0');
+    const amPm = Math.floor(elapsed / 3600) >= 12 ? 'PM' : 'AM'; // 根据小时数判断上午/下午
+    document.getElementById(`time-${id}`).textContent = `${hours}:${minutes}:${seconds} ${amPm}`;
+}
+
+
+    // Start updating the real-time clock
+    setInterval(updateRealTime, 1000);
+    updateRealTime();
+
+
+        function addTimer(id = ++timerCount, timerData = null) {
+    if (!isBusinessOpen) {
+        alert("请先开始营业！");
+        return;
+    }
+
+    const timerBox = document.createElement('div');
+    timerBox.classList.add('timer-box');
+    timerBox.id = `timer-${id}`;
+    timerBox.innerHTML = `
+        <h3>桌子 ${id}</h3>
+        <div>计时时间：<span id="time-${id}">0:00:00</span></div>
+        <button class="start-button" onclick="startTimer(${id})">开始</button>
+        <button class="stop-button" onclick="stopTimer(${id})">结束</button>
+        <button class="reset-button" onclick="resetTimer(${id})">重置</button>
+        <div>本次收入：<span id="earnings-${id}">RM 0.00</span></div>
+    `;
+    document.getElementById('timersContainer').appendChild(timerBox);
+
+    if (timerData) {
+        timers[id] = timerData;
+        if (timerData.elapsed) {
+            updateTimer(id);
+        }
+    }
+}
+
+function startTimer(id) {
+    if (!isBusinessOpen) {
+        alert("请先开始营业！");
+        return;
+    }
+    if (timers[id]?.interval) {
+        alert(`计时器 ${id} 已经运行！`);
+        return;
+    }
+
+    // **确保每次新开始都是从0开始**
+    timers[id] = { startTime: Date.now(), elapsed: 0, interval: null };
+
+    timers[id].interval = setInterval(() => updateTimer(id), 1000);
+    saveData();
+}
+
+
+function stopTimer(id) {
+    if (!isBusinessOpen) {
+        alert("请先开始营业！");
+        return;
+    }
+    if (!timers[id]?.interval) {
+        alert(`计时器 ${id} 尚未启动！`);
+        return;
+    }
+    clearInterval(timers[id].interval);
+    timers[id].interval = null;
+    
+    const elapsed = Math.floor((Date.now() - timers[id].startTime) / 1000);
+    timers[id].elapsed += elapsed; // 记录累计时间
+
+    const earnings = calculateEarnings(timers[id].elapsed);
+    totalEarnings += earnings; // **累加到总收入**
+    orderCount++; // **订单数量 +1**
+
+    // 更新UI
+    document.getElementById(`earnings-${id}`).textContent = `RM ${earnings.toFixed(2)}`;
+    updateSummary();
+    saveData();
+}
+
+
+
+function resetTimer(id) {
+    if (timers[id]?.interval) {
+        clearInterval(timers[id].interval);
+    }
+    timers[id] = { startTime: null, elapsed: 0, interval: null };
+    document.getElementById(`time-${id}`).textContent = '0:00:00';
+    document.getElementById(`earnings-${id}`).textContent = 'RM 0.00';
+}
+
+function updateTimer(id) {
+    const elapsed = timers[id]?.elapsed || 0;
+    const nowElapsed = timers[id]?.startTime ? Math.floor((Date.now() - timers[id].startTime) / 1000) : 0;
+    const totalElapsed = elapsed + nowElapsed;
+
+    const hours = String(Math.floor(totalElapsed / 3600)).padStart(2, '0');
+    const minutes = String(Math.floor((totalElapsed % 3600) / 60)).padStart(2, '0');
+    const seconds = String(totalElapsed % 60).padStart(2, '0');
+
+    document.getElementById(`time-${id}`).textContent = `${hours}:${minutes}:${seconds}`;
+}
+
+function calculateEarnings(elapsedSeconds) {
+    const ratePerHour = 12; // 每小时 RM12
+    return (elapsedSeconds / 3600) * ratePerHour;
+}
+
+
+       function updateSummary() {
+    document.getElementById('dailyEarnings').textContent = `RM ${totalEarnings.toFixed(2)}`;
+    document.getElementById('orderCount').textContent = orderCount;
+}
+
+		
+		function saveData() {
+    const data = {
+        isBusinessOpen,
+        timers,
+        totalEarnings,
+        orderCount
+    };
+    localStorage.setItem('snookerTrackerData', JSON.stringify(data));
+}
+
+function loadData() {
+    const savedData = JSON.parse(localStorage.getItem('snookerTrackerData'));
+    if (savedData) {
+        isBusinessOpen = savedData.isBusinessOpen || false;
+        Object.assign(timers, savedData.timers || {});
+        totalEarnings = savedData.totalEarnings || 0;
+        orderCount = savedData.orderCount || 0;
+
+        if (isBusinessOpen) {
+            alert("恢复营业状态：营业中！");
+        }
+        restoreTimers();
+        updateSummary();
+    }
+}
+
+    </script>
+</body>
+</html>
